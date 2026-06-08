@@ -1,165 +1,141 @@
 # spreadsheet-engine
 
-**Core engine for living AI spreadsheets** — every cell can be an agent, a training job, a simulation, or a MIDI generator.
-
 [![crates.io](https://img.shields.io/crates/v/spreadsheet-engine.svg)](https://crates.io/crates/spreadsheet-engine)
-[![docs.rs](https://docs.rs/spreadsheet-engine/badge.svg)](https://docs.rs/spreadsheet-engine)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![clippy](https://img.shields.io/badge/clippy-clean-green.svg)]()
 
-## The Idea
+**Core engine for living AI spreadsheets — every cell can be an agent, a training job, a simulation, or a MIDI generator.**
 
-Spreadsheets are the most successful programming model ever invented. What if every cell wasn't just a number or formula, but a living computational unit?
+## The Problem
+
+Spreadsheets are the most successful programming model in history. A billion people use them. But they're static — cells hold numbers and formulas, not *intelligences*. What if a cell could hold an agent that evolves, a training job that converges, a simulation that runs, or a MIDI generator that composes?
+
+The challenge is making this composable: agents need to communicate, evolution needs to conserve, and the whole thing needs to evaluate in dependency order like a real spreadsheet.
+
+## The Insight
+
+A cell is just a typed value with a tick function. The types form an algebra:
 
 ```
-┌─────────┬──────────┬───────────┬──────────┐
-│ Value   │ Agent    │ Training  │ MIDI     │
-│ 42      │ 🤖 alice │ 📉 model  │ 🎵 C4    │
-├─────────┼──────────┼───────────┼──────────┤
-│ Formula │ A2A      │ Simulation│ Formula  │
-│ =EVOLVE │ 🔗 disc  │ ⚡ tick   │ =PARETO  │
-└─────────┴──────────┴───────────┴──────────┘
+Cell = Value | Agent | Training | Simulation | A2A | MIDI | Formula
 ```
 
-## Quick Start
+Each type has its own evaluation semantics:
+- **Value**: static data (number, text, ternary {-1,0,+1}, vector)
+- **Agent**: ternary strategy {-1,0,+1}^N with fitness scoring
+- **Training**: convergence curve (1/sqrt(epoch) decay)
+- **Simulation**: damped oscillation (1D dynamical system)
+- **A2A**: inter-cell message bus (announce/discover/query)
+- **MIDI**: ternary→pitch-class sonification
+- **Formula**: =ENTROPY, =PARETO, =SPECIES, =EVOLVE, =CONSERVATION
+
+The engine evaluates cells in topological order (Kahn's algorithm on the dependency DAG) with cycle detection. Each tick advances all cells one step.
+
+A **conservation monitor** tracks the fleet health: γ (gamma = conservation score) + η (eta = entropy) must stay within budget across agent cells. If it drifts, the monitor flags it.
+
+## How It Works
+
+### Cell Types
 
 ```rust
-use spreadsheet_engine::{Grid, Engine, Cell, CellId, ValueCell, AgentCell};
-use spreadsheet_engine::{FormulaCell, FormulaOp, SimulationCell};
+use spreadsheet_engine::{Cell, CellValue, ValueCell, AgentCell};
 
-// Create a grid
-let mut grid = Grid::with_budget(10.0, 0.01);
+// A static value
+let val = Cell::Value(ValueCell::from(42));
 
-// Add cells
-grid.insert(CellId::new(0, 0), Cell::Value(ValueCell::from(42)));
-grid.insert(CellId::new(0, 1), Cell::Agent(
-    AgentCell::new("alice", 1.0).with_capability("rust", 0.9)
+// A ternary agent
+let agent = Cell::Agent(AgentCell::new(
+    vec![-1, 0, 1, 1],  // strategy weights
+    0.85,                // gamma (conservation)
+    0.12,                // eta (entropy)
+    1.0,                 // budget
 ));
 
-// Add an evolutionary formula
-grid.insert(CellId::new(1, 0), Cell::Formula(
-    FormulaCell::new(FormulaOp::Evolve {
-        generations: 50, population_size: 20, mutation_rate: 0.3
-    }, vec![CellId::new(0, 0), CellId::new(0, 1)])
-));
-
-// Run the engine
-let mut engine = Engine::new(grid);
-engine.tick().unwrap();
-
-println!("Health: {:.2}%", engine.health() * 100.0);
+// A formula cell
+let formula = Cell::Formula(FormulaCell::parse("=ENTROPY(A1:A10)").unwrap());
 ```
 
-## Cell Types
-
-| Type | Purpose | Example |
-|------|---------|---------|
-| `Value` | Plain data (numbers, text, booleans, ternary) | `42`, `"hello"`, `{-1, 0, +1}` |
-| `Agent` | AI agent with capabilities and conservation budget | LLM cell, classifier |
-| `Training` | Active ML training job with epochs and loss tracking | Fine-tuning loop |
-| `Simulation` | Tick-based simulation synchronized to fleet pulse | Physics sim, agent dynamics |
-| `A2A` | Agent-to-agent endpoint with discovery | Inter-cell communication |
-| `Midi` | MIDI event generator for sonification | Hear your spreadsheet |
-| `Formula` | Evolutionary formula operations | `EVOLVE`, `PARETO`, `SPECIES` |
-
-## Evolutionary Formulas
-
-This is what makes it alive. Standard spreadsheets have `SUM` and `AVERAGE`. We have:
-
-- **`EVOLVE`** — Genetic optimization over cell values. Mutate, select fittest, repeat.
-- **`SPECIES`** — Cluster cells by similarity (k-means over value vectors).
-- **`PARETO`** — Find Pareto-optimal cells (multi-objective optimization).
-- **`ENTROPY`** — Shannon entropy of a range (measure diversity).
-- **`CONSERVE`** — Track conservation law across cells (γ + η = budget).
-
-Plus standard math: `ADD`, `SUB`, `MUL`, `DIV`, `SUM`, `AVERAGE`, `MAX`, `MIN`.
-
-## Conservation Monitoring
-
-Every agent cell tracks `γ` (compute spend) and `η` (memory usage) against a `budget`. The grid enforces:
-
-```
-γ + η ≤ budget  (for each agent)
-Σ(γ) + Σ(η) ≤ total_budget  (for the grid)
-```
-
-Violations show up as conservation errors and propagate to MIDI cells as dissonance.
-
-## A2A Protocol
-
-Cells discover each other through the A2A bus:
+### Grid and Evaluation
 
 ```rust
-// Cell announces its capabilities
-bus.announce(cell_id, vec!["rust".into(), "ml".into()], tick);
+use spreadsheet_engine::{Grid, Engine};
 
-// Find cells with a capability
-let rust_cells = bus.find_by_capability("rust");
-
-// Send a message
-bus.send(A2AMessage {
-    from: cell_a, to: cell_b,
-    kind: A2AMessageKind::Query,
-    payload: CellValue::Empty,
-    tick,
-});
+let mut engine = Engine::new();
+engine.grid_mut().insert("A1".parse()?, Cell::Value(ValueCell::from(3.14)));
+engine.grid_mut().insert("A2".parse()?, agent);
+engine.tick()?;  // Evaluate all cells in dependency order
 ```
 
-## MIDI Sonification
-
-Map cell values to sound. Conservation violations become audible:
+### Conservation Monitor
 
 ```rust
-let mut midi = MidiCell::new("health-sound", 0, 60); // Channel 0, C4
-let events = midi.sonify(&CellValue::Number(0.0)); // Root = healthy
-let events = midi.sonify(&CellValue::Ternary(-1)); // Minor third = degraded
+// The conservation law: γ + η ≤ budget for each agent cell
+// γ = conservation score (how well the agent preserves fleet invariants)
+// η = entropy (Shannon entropy of the agent's strategy distribution)
+// If γ + η drifts above budget, the monitor flags ConservationStatus::Degrading
 ```
 
-## Architecture
+### Formula System
+
+| Formula | What it computes |
+|---------|-----------------|
+| `=ENTROPY(range)` | Shannon entropy of ternary values |
+| `=PARETO(range)` | Pareto-optimal agents (non-dominated) |
+| `=SPECIES(range, k)` | K-means clustering of strategies |
+| `=EVOLVE(range, gens)` | Genetic optimizer: top-50% survival + mutation |
+| `=CONSERVATION(range)` | Fleet conservation status (γ + η vs budget) |
+
+### MIDI Sonification
+
+Agent strategies map to pitch classes via the ternary→MIDI bridge:
+```
+{-1, 0, +1} → {avoid, neutral, choose}
+↓
+pitch class mapping (C=0, C#=1, ..., B=11)
+↓
+MIDI note-on/note-off events
+```
+
+## Module Map
 
 ```
-Grid (sparse HashMap<CellId, Cell>)
-  │
-  ├── Engine (tick loop, dependency resolution)
-  │     ├── A2ABus (inter-cell messaging)
-  │     ├── ConservationMonitor (budget tracking)
-  │     └── EvalContext (dependency values)
-  │
-  └── Cells: Value | Agent | Training | Simulation | A2A | Midi | Formula
+src/
+├── cell.rs          Cell enum, CellValue, 7 cell types
+├── engine.rs        Engine: tick, dependency resolution, evaluation
+├── grid.rs          Grid: 2D cell storage, insert/remove/get
+├── formula.rs       Formula parser, ENTROPY/PARETO/SPECIES/EVOLVE/CONSERVATION
+├── conservation.rs  Conservation monitor, fleet health tracking
+├── midi.rs          Ternary → MIDI pitch class sonification
+├── simulation.rs    Simulation cell: damped oscillation
+├── training.rs      Training cell: convergence curve
+├── a2a.rs           Inter-cell message bus (announce/discover/query)
+└── error.rs         Error types
 ```
+
+## Design Decisions
+
+**Why ternary agents, not arbitrary floats?** Ternary {-1, 0, +1} strategies create tiny, enumerable search spaces. For N=4 weights, there are exactly 81 strategies — you can evaluate all of them in microseconds. This makes `=EXHAUSTIVE()` (in the companion `si-superinstance` pip package) trivially fast. The spreadsheet cell is the container; the ternary strategy is the intelligence.
+
+**Why conservation monitoring?** Without constraints, agents diverge. The γ + η budget is a thermodynamic constraint: agents must balance conservation (stability) with entropy (exploration). This is borrowed from the fleet conservation law discovered across 155+ crates.
+
+**Why topological evaluation?** Real spreadsheets evaluate formulas in dependency order. We do the same but with typed cells — an A2A cell can depend on an Agent cell's output, a MIDI cell can depend on a Formula cell's result. Kahn's algorithm with cycle detection prevents infinite loops.
+
+**Why not async (yet)?** The engine is synchronous for simplicity. Cell evaluation is fast enough that async overhead isn't justified. The `tokio` dependency was removed in v0.1.1 after audit found it unused. If async evaluation becomes necessary (e.g., for real A2A networking), it can be added as a feature flag.
+
+**Training and Simulation are placeholders.** The current implementations prove the tick mechanism works (`step()` returns a decay curve or oscillation), but they're not real ML or physics. The design intent is for these to become pluggable traits — you'd implement your own `TrainingAlgorithm` or `SimulationModel` and plug it into the cell.
 
 ## Related Crates
 
-- [`cmidi-core`](https://crates.io/crates/cmidi-core) — Conversational MIDI protocol
-- [`cmidi-conservation`](https://crates.io/crates/cmidi-conservation) — Conservation law → harmonic tension
-- [`capability-spec`](https://crates.io/crates/capability-spec) — Agent capability specifications
+- **[si-superinstance](https://pypi.org/project/si-superinstance/)** — Python API for exhaustive ternary search (`pip install si-superinstance`)
+- **[spreadsheet-plr-bridge](https://crates.io/crates/spreadsheet-plr-bridge)** — PLR group voice leading as spreadsheet formulas
+- **[superinstance-spreadsheet](https://github.com/SuperInstance/superinstance-spreadsheet)** — Browser demo with =EXHAUSTIVE(), =EVOLVE(), charts
+
+## Status
+
+**v0.1.0 — Prototype.** The architecture is sound (cell-type algebra + DAG evaluation + conservation monitoring), but Training and Simulation cells are placeholders. The formula system, agent model, and conservation monitor are real and tested.
+
+**Audit results** (2026-06-08): Clippy clean, 67 unit + 1 doc test passing. Test quality rated B+ by independent audit — formula and grid tests are substantive; cell construction tests are weaker.
 
 ## License
 
 MIT
-
----
-
-## 🚢 Fleet Integration
-
-This repo is part of the SuperInstance spreadsheet ecosystem — a complement to the
-220+ repo MIDI fleet. Every spreadsheet cell uses the same ternary {-1, 0, +1}
-encoding as every fleet repo.
-
-**Key insight:** The fleet IS the spreadsheet. Our I2I bottle protocol (message passing)
-and the spreadsheet cell formula system (functional composition) are dual architectures
-for the same multi-agent coordination problem.
-
-### Direct Connections
-
-| Spreadsheet Concept | Fleet Counterpart | What They Share |
-|-------------------|-------------------|-----------------|
-| Cell value | Agent state | Ternary {-1,0,+1} |
-| Cell formula | I2I bottle | Communication pattern |
-| Grid topology | fleet-bridge | Routing infrastructure |
-| Evolutionary sort | fleet-orchestra | Agent coordination |
-| MIDI cell | All MIDI repos | Note generation |
-
-### Related Repos
-- [superinstance-spreadsheet](https://github.com/SuperInstance/superinstance-spreadsheet) — Browser UI
-- [fleet-ternary-music](https://github.com/SuperInstance/fleet-ternary-music) — Core math
-- [fleet-orchestra](https://github.com/SuperInstance/fleet-orchestra) — Agent orchestration
-- [fleet-arm-compat](https://github.com/SuperInstance/fleet-arm-compat) — ARM verification
