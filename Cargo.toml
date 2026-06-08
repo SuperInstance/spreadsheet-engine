@@ -1,0 +1,16 @@
+[package]
+name = "spreadsheet-engine"
+version = "0.1.0"
+edition = "2021"
+description = "Core engine for living AI spreadsheets — every cell can be an agent, a training job, a simulation, or a MIDI generator"
+license = "MIT"
+repository = "https://github.com/SuperInstance/spreadsheet-engine"
+keywords = ["spreadsheet", "agents", "a2a", "simulation", "midi"]
+categories = ["science", "simulation"]
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+uuid = { version = "1", features = ["v4"] }
