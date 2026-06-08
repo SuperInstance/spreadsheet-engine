@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::cell::{CellId, CellState, CellValue};
+use crate::cell::{CellState, CellValue};
 
 /// A cell that generates MIDI events from its state.
 #[derive(Debug, Clone, Serialize, Deserialize)]

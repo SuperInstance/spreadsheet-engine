@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use serde::{Deserialize, Serialize};
 
-use crate::cell::{Cell, CellId, CellValue, CellState};
+use crate::cell::{Cell, CellId};
 
 /// The living spreadsheet grid.
 #[derive(Debug, Clone, Serialize, Deserialize)]

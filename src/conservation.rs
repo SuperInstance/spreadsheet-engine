@@ -3,7 +3,8 @@
 //! Tracks γ + η = budget across all agent cells, computing fleet-wide
 //! health and detecting violations before they cascade.
 
-use crate::cell::{Cell, CellId, AgentCell};
+use crate::cell::{Cell, CellId};
+#[cfg(test)] use crate::cell::AgentCell;
 use crate::grid::Grid;
 
 /// Grid-wide conservation monitor.

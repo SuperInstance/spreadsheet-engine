@@ -5,9 +5,11 @@
 
 use std::collections::HashMap;
 use std::time::Duration;
+use crate::cell::EvalContext;
+#[cfg(test)] use crate::cell::Cell;
 
 use crate::a2a::A2ABus;
-use crate::cell::{Cell, CellId, CellResult, CellState, CellValue, EvalContext};
+use crate::cell::{CellId, CellValue};
 use crate::conservation::ConservationMonitor;
 use crate::grid::Grid;
 
@@ -120,7 +122,7 @@ impl Engine {
 // Internal module to keep evaluate_cell private
 mod engine_internal {
     use crate::cell::*;
-    use crate::formula::FormulaCell;
+    
 
     pub fn evaluate_cell(cell: Cell, ctx: &EvalContext) -> CellResult {
         match cell {

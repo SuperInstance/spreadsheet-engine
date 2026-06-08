@@ -13,8 +13,8 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::cell::{CellId, CellState, CellValue, CellResult, EvalContext};
-use crate::error::Error;
+use crate::cell::{CellId, CellState, CellValue};
+
 
 // ── Formula Operations ───────────────────────────────────────────────
 
@@ -202,7 +202,7 @@ fn simulate_evolve(values: &[CellValue], generations: u32, pop_size: usize, muta
     let nums: Vec<f64> = values.iter().filter_map(|v| v.as_f64()).collect();
     if nums.is_empty() { return CellValue::Vector(vec![]); }
 
-    let n = nums.len();
+    let _n = nums.len();
     let mut population: Vec<Vec<f64>> = (0..pop_size)
         .map(|_| nums.iter().map(|&v| v + (rand_simple() - 0.5) * 2.0).collect())
         .collect();
@@ -292,8 +292,8 @@ fn compute_conserve(values: &[CellValue]) -> CellValue {
 // ── Simple RNG (no external dep) ─────────────────────────────────────
 
 fn rand_simple() -> f64 {
-    use std::time::SystemTime;
-    let nanos = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap_or_default().subsec_nanos();
+    
+    let nanos = (fastrand::f64() * 1_000_000_000.0) as u32;
     // Simple hash-based PRNG
     let x = nanos.wrapping_mul(1103515245).wrapping_add(12345);
     (x % 10000) as f64 / 10000.0

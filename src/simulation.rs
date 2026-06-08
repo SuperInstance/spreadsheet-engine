@@ -3,7 +3,6 @@
 //! A simulation cell advances in discrete ticks. Multiple simulation cells
 //! can be synchronized to the same pulse for coordinated fleet simulation.
 
-use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
