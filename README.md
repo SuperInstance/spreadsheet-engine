@@ -135,3 +135,31 @@ Grid (sparse HashMap<CellId, Cell>)
 ## License
 
 MIT
+
+---
+
+## 🚢 Fleet Integration
+
+This repo is part of the SuperInstance spreadsheet ecosystem — a complement to the
+220+ repo MIDI fleet. Every spreadsheet cell uses the same ternary {-1, 0, +1}
+encoding as every fleet repo.
+
+**Key insight:** The fleet IS the spreadsheet. Our I2I bottle protocol (message passing)
+and the spreadsheet cell formula system (functional composition) are dual architectures
+for the same multi-agent coordination problem.
+
+### Direct Connections
+
+| Spreadsheet Concept | Fleet Counterpart | What They Share |
+|-------------------|-------------------|-----------------|
+| Cell value | Agent state | Ternary {-1,0,+1} |
+| Cell formula | I2I bottle | Communication pattern |
+| Grid topology | fleet-bridge | Routing infrastructure |
+| Evolutionary sort | fleet-orchestra | Agent coordination |
+| MIDI cell | All MIDI repos | Note generation |
+
+### Related Repos
+- [superinstance-spreadsheet](https://github.com/SuperInstance/superinstance-spreadsheet) — Browser UI
+- [fleet-ternary-music](https://github.com/SuperInstance/fleet-ternary-music) — Core math
+- [fleet-orchestra](https://github.com/SuperInstance/fleet-orchestra) — Agent orchestration
+- [fleet-arm-compat](https://github.com/SuperInstance/fleet-arm-compat) — ARM verification
