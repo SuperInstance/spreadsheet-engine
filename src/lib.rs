@@ -1,32 +1,30 @@
-//! # spreadsheet-engine — Core Engine for Living AI Spreadsheets
+//! # spreadsheet-engine: The Living AI Spreadsheet
 //!
-//! Every cell can be a value, an AI agent, a training job, a simulation,
-//! an A2A endpoint, a MIDI generator, or an evolutionary formula.
+//! An AI spreadsheet where every cell can be an agent, a training job, a simulation,
+//! an A2A endpoint, or a MIDI generator — with conservation laws that keep the whole
+//! system thermodynamically honest.
+//!
+//! ## Cell Types
+//!
+//! 7 first-class cell types: Value, Agent, Training, Simulation, A2A, MIDI, Formula.
+//!
+//! ## Conservation
+//!
+//! Agent cells obey γ (compute) + η (memory) = budget. The `ConservationMonitor`
+//! tracks this fleet-wide, detecting budget leaks before they cascade.
 //!
 //! ## Quick Start
 //!
 //! ```
-//! use spreadsheet_engine::{Grid, Engine, Cell, CellId, ValueCell};
+//! use spreadsheet_engine::{Grid, Engine, Cell, cell::{CellId, ValueCell}};
 //!
 //! let mut grid = Grid::new();
 //! grid.insert(CellId::new(0, 0), Cell::Value(ValueCell::from(42)));
-//! grid.insert(CellId::new(0, 1), Cell::Value(ValueCell::from(8)));
 //!
 //! let mut engine = Engine::new(grid);
 //! engine.tick().unwrap();
+//! assert_eq!(engine.value(&CellId::new(0, 0)), Some(&spreadsheet_engine::cell::CellValue::Number(42.0)));
 //! ```
-//!
-//! ## Cell Types
-//!
-//! | Type | Purpose | Example |
-//! |------|---------|---------|
-//! | `Value` | Plain data | `42`, `"hello"` |
-//! | `Agent` | AI agent with capabilities | LLM cell, classifier |
-//! | `Training` | Active ML training job | fine-tuning, RL loop |
-//! | `Simulation` | Tick-based simulation | fleet-midi pulse |
-//! | `A2A` | Agent-to-agent endpoint | discovers other cells |
-//! | `Midi` | MIDI event generator | sonification |
-//! | `Formula` | Evolutionary formula | `EVOLVE`, `PARETO`, `SPECIES` |
 
 pub mod a2a;
 pub mod cell;
@@ -39,13 +37,16 @@ pub mod midi;
 pub mod simulation;
 pub mod training;
 
-pub use a2a::{A2ABus, A2ACell, A2AMessage};
-pub use cell::{Cell, CellId, CellResult, CellState, EvalContext, ValueCell, AgentCell};
-pub use conservation::ConservationMonitor;
+pub use a2a::{A2ABus, A2ACell, A2AMessage, A2AMessageKind};
+pub use cell::{
+    Cell, CellId, CellResult, CellState, CellValue, EvalContext,
+    AgentCell, ValueCell,
+};
+pub use conservation::{ConservationMonitor, ConservationTrend};
 pub use engine::Engine;
-pub use error::Error;
+pub use error::{Error, Result};
 pub use formula::{FormulaCell, FormulaOp};
 pub use grid::Grid;
 pub use midi::MidiCell;
-pub use simulation::{SimulationCell, SimulationState};
-pub use training::{TrainingCell, TrainingState};
+pub use simulation::SimulationCell;
+pub use training::TrainingCell;
